@@ -1,0 +1,14 @@
+{
+  "minecraft:adventure/adventuring_time": {
+    "name": "Adventuring Time",
+    "description": "Discover every biome"
+  },
+  "minecraft:story/mine_stone": {
+    "name": "Stone Age",
+    "description": "Mine stone with your new pickaxe"
+  },
+  "minecraft:story/smelt_iron": {
+    "name": "Acquire Hardware",
+    "description": "Smelt an iron ingot"
+  }
+}
