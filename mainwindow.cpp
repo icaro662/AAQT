@@ -19,11 +19,64 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     loadAdvancementReference("/home/hikaru/Projects/AA-Tool/AA-Tool/advancements_reference.json");
     loadAdvancements("/home/hikaru/.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher/instances/1.16.1/minecraft/saves/New World/advancements/fa707870-b3b3-4e17-a4d8-89dfd5bfa073.json");
+
+    QSettings settings;
+    QString instancePath = settings.value("instancePath", "").toString();
+
+    if (!instancePath.isEmpty()) {
+        QString worldPath = detectActiveWorldPath(instancePath);
+        if (!worldPath.isEmpty()) {
+            QString advFile = findAdvancementsFile(worldPath);
+            if (!advFile.isEmpty()) {
+                loadAdvancements(advFile);
+            }
+        }
+    }
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::loadAdvancementReference(const QString &filePath)
+{
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return;
+    }
+
+    QByteArray data = file.readAll();
+    file.close();
+
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    QJsonObject root = doc.object();
+
+    for (const QString &key : root.keys()) {
+        QJsonObject entry = root.value(key).toObject();
+
+        AdvancementInfo info;
+        info.name = entry.value("name").toString();
+        info.description = entry.value("description").toString();
+
+        advancementReference.insert(key, info);
+    }
+}
+
+QString MainWindow::findAdvancementsFile(const QString &worldPath)
+{
+    QDir advancementsDir(worldPath + "/advancements");
+    if (!advancementsDir.exists()) {
+        return QString();
+    }
+
+    QStringList jsonFiles = advancementsDir.entryList(QStringList() << "*.json", QDir::Files);
+
+    if (jsonFiles.isEmpty()) {
+        return QString();
+    }
+
+    return advancementsDir.absoluteFilePath(jsonFiles.first());
 }
 
 void MainWindow::loadAdvancements(const QString &filePath)
@@ -90,8 +143,17 @@ QString MainWindow::detectActiveWorldPath(const QString &instancePath)
             continue;
         }
 
-        advancementReference.insert(key, info);
+        QDateTime modified = levelDat.lastModified();
+        qDebug() << folder.fileName() << "last modified:" << modified;
+
+        if (mostRecentWorld.isEmpty() || modified > mostRecentTime) {
+            mostRecentWorld = folder.absoluteFilePath();
+            mostRecentTime = modified;
+        }
     }
+
+    qDebug() << "Selected world:" << mostRecentWorld;
+    return mostRecentWorld;
 }
 
 void MainWindow::on_btnSettings_clicked()
