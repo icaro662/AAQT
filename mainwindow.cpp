@@ -1,11 +1,16 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "settingsdialog.h"
 
 #include <QMessageBox>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
+#include <QDir>
+#include <QFileInfo>
+#include <QDateTime>
+#include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -64,28 +69,34 @@ void MainWindow::loadAdvancements(const QString &filePath)
     }
 }
 
-void MainWindow::loadAdvancementReference(const QString &filePath)
+QString MainWindow::detectActiveWorldPath(const QString &instancePath)
 {
-    QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return;
+    QDir savesDir(instancePath + "/saves");
+    if (!savesDir.exists()) {
+        qDebug() << "Saves folder doesn't exist:" << savesDir.path();
+        return QString();
     }
 
-    QByteArray data = file.readAll();
-    file.close();
+    QFileInfoList worldFolders = savesDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
 
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-    QJsonObject root = doc.object();
+    QString mostRecentWorld;
+    QDateTime mostRecentTime;
 
-    for (const QString &key : root.keys()) {
-        QJsonObject entry = root.value(key).toObject();
+    for (const QFileInfo &folder : worldFolders) {
+        QFileInfo levelDat(folder.absoluteFilePath() + "/level.dat");
 
-        AdvancementInfo info;
-        info.name = entry.value("name").toString();
-        info.description = entry.value("description").toString();
+        if (!levelDat.exists()) {
+            qDebug() << "No level.dat in:" << folder.absoluteFilePath();
+            continue;
+        }
 
         advancementReference.insert(key, info);
     }
 }
 
+void MainWindow::on_btnSettings_clicked()
+{
+    SettingsDialog dialog(this);
+    dialog.exec();
+}
 

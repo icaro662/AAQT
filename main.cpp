@@ -17,6 +17,9 @@ int main(int argc, char *argv[])
             break;
         }
     }
+    QApplication::setOrganizationName("misha");
+    QApplication::setApplicationName("AAQT");
+
     MainWindow w;
     w.show();
     return QApplication::exec();

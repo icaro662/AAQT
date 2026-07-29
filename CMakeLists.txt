@@ -11,6 +11,7 @@ qt_add_executable(AA-Tool
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+    settingsdialog.h settingsdialog.cpp settingsdialog.ui
 )
 
 qt_add_translations(
