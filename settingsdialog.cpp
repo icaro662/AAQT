@@ -35,3 +35,9 @@ void SettingsDialog::on_btnBrowse_clicked()
         ui->lineEditInstancePath->setText(dir);
     }
 }
+
+void SettingsDialog::on_buttonBox_accepted()
+{
+
+}
+

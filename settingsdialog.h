@@ -22,6 +22,8 @@ public slots:
 private slots:
     void on_btnBrowse_clicked();
 
+    void on_buttonBox_accepted();
+
 private:
     Ui::SettingsDialog *ui;
 };

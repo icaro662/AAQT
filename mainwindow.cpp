@@ -11,17 +11,22 @@
 #include <QFileInfo>
 #include <QDateTime>
 #include <QDebug>
+#include <zlib.h>
+#include <iostream>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
+    qDebug() << "MAINWINDOW CONSTRUCTOR STARTED test";
     ui->setupUi(this);
     loadAdvancementReference("/home/hikaru/Projects/AA-Tool/AA-Tool/advancements_reference.json");
-    loadAdvancements("/home/hikaru/.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher/instances/1.16.1/minecraft/saves/New World/advancements/fa707870-b3b3-4e17-a4d8-89dfd5bfa073.json");
 
+void MainWindow::refreshFromInstance()
+{
     QSettings settings;
     QString instancePath = settings.value("instancePath", "").toString();
+    qDebug() << "Instance path from settings:" << instancePath;
 
     if (!instancePath.isEmpty()) {
         QString worldPath = detectActiveWorldPath(instancePath);
@@ -34,13 +39,43 @@ MainWindow::MainWindow(QWidget *parent)
     }
 }
 
-MainWindow::~MainWindow()
+QString MainWindow::detectActiveWorldPath(const QString &instancePath)
 {
-    delete ui;
+    QDir savesDir(instancePath + "/minecraft/saves");
+    if (!savesDir.exists()) {
+        qDebug() << "Saves folder doesn't exist:" << savesDir.path();
+        return QString();
+    }
+
+    QFileInfoList worldFolders = savesDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+
+    QString mostRecentWorld;
+    QDateTime mostRecentTime;
+
+    for (const QFileInfo &folder : worldFolders) {
+        QFileInfo levelDat(folder.absoluteFilePath() + "/level.dat");
+
+        if (!levelDat.exists()) {
+            qDebug() << "No level.dat in:" << folder.absoluteFilePath();
+            continue;
+        }
+
+        QDateTime modified = levelDat.lastModified();
+        qDebug() << folder.fileName() << "last modified:" << modified;
+
+        if (mostRecentWorld.isEmpty() || modified > mostRecentTime) {
+            mostRecentWorld = folder.absoluteFilePath();
+            mostRecentTime = modified;
+        }
+    }
+
+    qDebug() << "Selected world:" << mostRecentWorld;
+    return mostRecentWorld;
 }
 
 void MainWindow::loadAdvancementReference(const QString &filePath)
 {
+
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return;
@@ -81,6 +116,7 @@ QString MainWindow::findAdvancementsFile(const QString &worldPath)
 
 void MainWindow::loadAdvancements(const QString &filePath)
 {
+    ui->listAdvancements->clear();
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         ui->listAdvancements->addItem("Could not open file: " + filePath);
@@ -122,43 +158,15 @@ void MainWindow::loadAdvancements(const QString &filePath)
     }
 }
 
-QString MainWindow::detectActiveWorldPath(const QString &instancePath)
-{
-    QDir savesDir(instancePath + "/saves");
-    if (!savesDir.exists()) {
-        qDebug() << "Saves folder doesn't exist:" << savesDir.path();
-        return QString();
-    }
-
-    QFileInfoList worldFolders = savesDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
-
-    QString mostRecentWorld;
-    QDateTime mostRecentTime;
-
-    for (const QFileInfo &folder : worldFolders) {
-        QFileInfo levelDat(folder.absoluteFilePath() + "/level.dat");
-
-        if (!levelDat.exists()) {
-            qDebug() << "No level.dat in:" << folder.absoluteFilePath();
-            continue;
-        }
-
-        QDateTime modified = levelDat.lastModified();
-        qDebug() << folder.fileName() << "last modified:" << modified;
-
-        if (mostRecentWorld.isEmpty() || modified > mostRecentTime) {
-            mostRecentWorld = folder.absoluteFilePath();
-            mostRecentTime = modified;
-        }
-    }
-
-    qDebug() << "Selected world:" << mostRecentWorld;
-    return mostRecentWorld;
-}
-
 void MainWindow::on_btnSettings_clicked()
 {
     SettingsDialog dialog(this);
-    dialog.exec();
+    if (dialog.exec() == QDialog::Accepted) {
+        refreshFromInstance();
+    }
 }
 
+MainWindow::~MainWindow()
+{
+    delete ui;
+}

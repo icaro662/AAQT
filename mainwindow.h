@@ -29,10 +29,10 @@ private slots:
 private:
     Ui::MainWindow *ui;
     QMap<QString, AdvancementInfo> advancementReference;
-    void loadAdvancementReference(const QString &filePath);
-    void loadAdvancements(const QString &filePath);
     QString detectActiveWorldPath(const QString &instancePath);
     QString findAdvancementsFile(const QString &worldPath);
-
+    void loadAdvancementReference(const QString &filePath);
+    void loadAdvancements(const QString &filePath);
+    void refreshFromInstance();
 };
 #endif // MAINWINDOW_H
