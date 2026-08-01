@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <QtGlobal>
 
-void myMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+void outputHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
     Q_UNUSED(context);
     fprintf(stderr, "[QT] %s\n", qPrintable(msg));
@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 {
     printf("BEFORE HANDLER INSTALL\n");
     fflush(stdout);
-    qInstallMessageHandler(myMessageHandler);
+    qInstallMessageHandler(outputHandler);
     qDebug() << "HANDLER TEST";
     printf("AFTER QDEBUG CALL\n");
     fflush(stdout);
