@@ -36,6 +36,13 @@ MainWindow::MainWindow(QWidget *parent)
     showMaximized();
 
     loadAdvancementReference("/home/hikaru/Projects/AA-Tool/AA-Tool/advancements_reference.json");
+    refreshFromInstance();
+
+    refreshTimer = new QTimer(this);
+    connect(refreshTimer, &QTimer::timeout, this, &MainWindow::refreshFromInstance);
+    refreshTimer->start(60000);
+}
+
 QByteArray MainWindow::decompressGzip(const QString &filePath)
 {
     gzFile file = gzopen(filePath.toUtf8().constData(), "rb");

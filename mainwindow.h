@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QTimer>
 #include <QStringList>
 
 QT_BEGIN_NAMESPACE
@@ -36,6 +37,7 @@ private:
     QString findAdvancementsFile(const QString &worldPath);
     QString formatCriterionName(const QString &rawKey);
     QByteArray decompressGzip(const QString &filePath);
+    QTimer *refreshTimer;
     void loadAdvancementReference(const QString &filePath);
     void loadAdvancements(const QString &filePath);
     void refreshFromInstance();
