@@ -6,50 +6,67 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1210</width>
-    <height>699</height>
+    <width>1545</width>
+    <height>783</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QListWidget" name="listAdvancements">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>20</y>
-      <width>1171</width>
-      <height>601</height>
-     </rect>
-    </property>
-   </widget>
    <widget class="QPushButton" name="btnSettings">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>630</y>
-      <width>91</width>
-      <height>21</height>
-      <x>12</x>
+      <x>10</x>
+      <y>720</y>
+      <width>80</width>
+      <height>27</height>
      </rect>
     </property>
     <property name="text">
      <string>Settings</string>
     </property>
+   </widget>
+   <widget class="QWidget" name="">
+    <property name="geometry">
+     <rect>
+      <x>12</x>
+      <y>12</y>
+      <width>1521</width>
+      <height>701</height>
+     </rect>
+    </property>
     <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QListWidget" name="listAdvancements">
+       <property name="frameShape">
+        <enum>QFrame::Shape::Box</enum>
+       </property>
+       <property name="movement">
+        <enum>QListView::Movement::Static</enum>
+       </property>
+       <property name="viewMode">
+        <enum>QListView::ViewMode::IconMode</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QListWidget" name="listAdvancementsMulti">
+       <property name="frameShape">
+        <enum>QFrame::Shape::Box</enum>
+       </property>
+       <property name="movement">
+        <enum>QListView::Movement::Static</enum>
+       </property>
+       <property name="viewMode">
+        <enum>QListView::ViewMode::IconMode</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </widget>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>1210</width>
-     <height>24</height>
-    </rect>
-   </property>
-  </widget>
  </widget>
  <resources/>
  <connections/>

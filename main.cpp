@@ -15,12 +15,7 @@ void outputHandler(QtMsgType type, const QMessageLogContext &context, const QStr
 
 int main(int argc, char *argv[])
 {
-    printf("BEFORE HANDLER INSTALL\n");
-    fflush(stdout);
     qInstallMessageHandler(outputHandler);
-    qDebug() << "HANDLER TEST";
-    printf("AFTER QDEBUG CALL\n");
-    fflush(stdout);
     QApplication a(argc, argv);
     QTranslator translator;
     const QStringList uiLanguages = QLocale::system().uiLanguages();
