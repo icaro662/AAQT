@@ -31,6 +31,7 @@ private:
     QMap<QString, AdvancementInfo> advancementReference;
     QString detectActiveWorldPath(const QString &instancePath);
     QString findAdvancementsFile(const QString &worldPath);
+    QByteArray decompressGzip(const QString &filePath);
     void loadAdvancementReference(const QString &filePath);
     void loadAdvancements(const QString &filePath);
     void refreshFromInstance();

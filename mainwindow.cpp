@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "settingsdialog.h"
+#include "nbtreader.h"
 
 #include <QMessageBox>
 #include <QFile>
@@ -10,6 +11,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QDateTime>
+#include <QMainWindow>
 #include <QDebug>
 #include <zlib.h>
 #include <iostream>
@@ -21,6 +23,79 @@ MainWindow::MainWindow(QWidget *parent)
     qDebug() << "MAINWINDOW CONSTRUCTOR STARTED test";
     ui->setupUi(this);
     loadAdvancementReference("/home/hikaru/Projects/AA-Tool/AA-Tool/advancements_reference.json");
+QByteArray MainWindow::decompressGzip(const QString &filePath)
+{
+    gzFile file = gzopen(filePath.toUtf8().constData(), "rb");
+    if (!file) {
+        qDebug() << "Could not open gzip file:" << filePath;
+        return QByteArray();
+    }
+
+    QByteArray result;
+    char buffer[8192];
+    int bytesRead;
+
+    while ((bytesRead = gzread(file, buffer, sizeof(buffer))) > 0) {
+        result.append(buffer, bytesRead);
+    }
+
+    gzclose(file);
+    return result;
+}
+
+QString MainWindow::parseMinecraftVersion(const QByteArray &levelDatBytes)
+{
+    NbtReader reader(levelDatBytes);
+
+    quint8 rootType = reader.readByte();
+    if (rootType != 10) {
+        qDebug() << "Not a valid NBT file, root type:" << rootType;
+        return QString();
+    }
+    reader.readString(); // root name, discarded
+
+    // Walk the root compound's children looking for "Data"
+    while (true) {
+        quint8 childType = reader.readByte();
+        if (childType == 0) break; // End of root compound, "Data" not found
+
+        QString childName = reader.readString();
+
+        if (childType == 10 && childName == "Data") {
+            // Found it — walk INTO the Data compound looking for "Version"
+            while (true) {
+                quint8 dataChildType = reader.readByte();
+                if (dataChildType == 0) break;
+
+                QString dataChildName = reader.readString();
+
+                if (dataChildType == 10 && dataChildName == "Version") {
+                    // Found it — walk INTO Version looking for "Name"
+                    while (true) {
+                        quint8 versionChildType = reader.readByte();
+                        if (versionChildType == 0) break;
+
+                        QString versionChildName = reader.readString();
+
+                        if (versionChildType == 8 && versionChildName == "Name") {
+                            return reader.readString(); // this IS the version string
+                        } else {
+                            reader.skipPayload(versionChildType);
+                        }
+                    }
+                    return QString(); // Version found, but no Name inside
+                } else {
+                    reader.skipPayload(dataChildType);
+                }
+            }
+            return QString(); // Data found, but no Version inside
+        } else {
+            reader.skipPayload(childType);
+        }
+    }
+
+    return QString(); // "Data" not found at all
+}
 
 void MainWindow::refreshFromInstance()
 {
@@ -31,6 +106,11 @@ void MainWindow::refreshFromInstance()
     if (!instancePath.isEmpty()) {
         QString worldPath = detectActiveWorldPath(instancePath);
         if (!worldPath.isEmpty()) {
+            QByteArray levelDatBytes = decompressGzip(worldPath + "/level.dat");
+            QString version = parseMinecraftVersion(levelDatBytes);
+
+            setWindowTitle("AAQT - " + version);
+
             QString advFile = findAdvancementsFile(worldPath);
             if (!advFile.isEmpty()) {
                 loadAdvancements(advFile);

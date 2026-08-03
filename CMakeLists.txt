@@ -12,6 +12,7 @@ qt_add_executable(AA-Tool
     mainwindow.h
     mainwindow.ui
     settingsdialog.h settingsdialog.cpp settingsdialog.ui
+    nbtreader.h nbtreader.cpp
 )
 
 qt_add_translations(
@@ -23,6 +24,7 @@ target_link_libraries(AA-Tool
     PRIVATE
         Qt::Core
         Qt::Widgets
+        Qt6::Widgets z
 )
 
 install(TARGETS AA-Tool
