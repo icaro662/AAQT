@@ -31,15 +31,16 @@
       <y>630</y>
       <width>91</width>
       <height>21</height>
+      <x>12</x>
      </rect>
     </property>
     <property name="text">
      <string>Settings</string>
     </property>
+    <layout class="QVBoxLayout" name="verticalLayout">
    </widget>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
-  <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
     <rect>
      <x>0</x>

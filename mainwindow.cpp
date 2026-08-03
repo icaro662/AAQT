@@ -8,20 +8,33 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
+#include <QJsonArray>
 #include <QDir>
 #include <QFileInfo>
 #include <QDateTime>
 #include <QMainWindow>
 #include <QDebug>
+#include <QPainter>
+#include <QGroupBox>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QAbstractItemView>
+
 #include <zlib.h>
 #include <iostream>
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
-    qDebug() << "MAINWINDOW CONSTRUCTOR STARTED test";
     ui->setupUi(this);
+    ui->listAdvancements->setSelectionMode(QAbstractItemView::NoSelection);
+    ui->listAdvancementsMulti->setSelectionMode(QAbstractItemView::NoSelection);
+    setWindowTitle("AAQT");
+    showMaximized();
+
     loadAdvancementReference("/home/hikaru/Projects/AA-Tool/AA-Tool/advancements_reference.json");
 QByteArray MainWindow::decompressGzip(const QString &filePath)
 {
@@ -101,7 +114,6 @@ void MainWindow::refreshFromInstance()
 {
     QSettings settings;
     QString instancePath = settings.value("instancePath", "").toString();
-    qDebug() << "Instance path from settings:" << instancePath;
 
     if (!instancePath.isEmpty()) {
         QString worldPath = detectActiveWorldPath(instancePath);
@@ -155,7 +167,6 @@ QString MainWindow::detectActiveWorldPath(const QString &instancePath)
 
 void MainWindow::loadAdvancementReference(const QString &filePath)
 {
-
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return;
@@ -173,6 +184,13 @@ void MainWindow::loadAdvancementReference(const QString &filePath)
         AdvancementInfo info;
         info.name = entry.value("name").toString();
         info.description = entry.value("description").toString();
+
+        if (entry.contains("criteria")) {
+            QJsonArray criteriaArray = entry.value("criteria").toArray();
+            for (const QJsonValue &val : criteriaArray) {
+                info.criteria.append(val.toString());
+            }
+        }
 
         advancementReference.insert(key, info);
     }
@@ -194,9 +212,31 @@ QString MainWindow::findAdvancementsFile(const QString &worldPath)
     return advancementsDir.absoluteFilePath(jsonFiles.first());
 }
 
+QString MainWindow::formatCriterionName(const QString &rawKey)
+{
+    QString name = rawKey;
+
+    if (name.startsWith("minecraft:")) {
+        name.remove(0, 10); // strip the "minecraft:" prefix (10 characters)
+    }
+
+    name.replace("_", " ");
+
+    QStringList words = name.split(" ");
+    for (int i = 0; i < words.size(); i++) {
+        if (!words[i].isEmpty()) {
+            words[i][0] = words[i][0].toUpper();
+        }
+    }
+
+    return words.join(" ");
+}
+
 void MainWindow::loadAdvancements(const QString &filePath)
 {
     ui->listAdvancements->clear();
+    ui->listAdvancementsMulti->clear();
+
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         ui->listAdvancements->addItem("Could not open file: " + filePath);
@@ -218,23 +258,72 @@ void MainWindow::loadAdvancements(const QString &filePath)
 
     for (const QString &key : root.keys()) {
         if (key == "DataVersion") continue;
-         if (key.startsWith("minecraft:recipes/")) continue;
+        if (key.startsWith("minecraft:recipes/")) continue;
+        if (key.endsWith("/root")) continue;
 
         QJsonObject advancement = root.value(key).toObject();
         bool done = advancement.value("done").toBool();
+        QJsonObject completedCriteria = advancement.value("criteria").toObject();
 
         QString displayText;
+        bool isMultiCriteria = false;
+        QStringList criteriaList;
+
         if (advancementReference.contains(key)) {
-            displayText = advancementReference.value(key).name;
+            AdvancementInfo info = advancementReference.value(key);
+            displayText = info.name;
+            criteriaList = info.criteria;
+            isMultiCriteria = criteriaList.size() > 1;
         } else {
-            displayText = key; // fallback: no reference entry yet, show raw key
+            displayText = key;
         }
 
-        QListWidgetItem *item = new QListWidgetItem(displayText);
-        if (done) {
-            item->setForeground(QColor("green"));
+        QPixmap pixmap(64, 64);
+        pixmap.fill(done ? QColor("#3a7d3a") : QColor("#555555"));
+        QPainter painter(&pixmap);
+        painter.setPen(Qt::white);
+        painter.drawRect(0, 0, 63, 63);
+        painter.end();
+        QIcon icon(pixmap);
+
+        if (isMultiCriteria) {
+            QGroupBox *card = new QGroupBox(displayText);
+            QVBoxLayout *cardLayout = new QVBoxLayout(card);
+
+            for (const QString &criterion : criteriaList) {
+                bool criterionDone = completedCriteria.contains(criterion);
+
+                QPixmap smallPixmap(20, 20);
+                smallPixmap.fill(criterionDone ? QColor("#3a7d3a") : QColor("#555555"));
+                QPainter smallPainter(&smallPixmap);
+                smallPainter.setPen(Qt::white);
+                smallPainter.drawRect(0, 0, 19, 19);
+                smallPainter.end();
+
+                QWidget *row = new QWidget();
+                QHBoxLayout *rowLayout = new QHBoxLayout(row);
+                rowLayout->setContentsMargins(0, 0, 0, 0);
+
+                QLabel *iconLabel = new QLabel();
+                iconLabel->setPixmap(smallPixmap);
+
+                QLabel *textLabel = new QLabel(formatCriterionName(criterion));
+
+                rowLayout->addWidget(iconLabel);
+                rowLayout->addWidget(textLabel);
+                rowLayout->addStretch();
+
+                cardLayout->addWidget(row);
+            }
+
+            QListWidgetItem *listItem = new QListWidgetItem();
+            listItem->setSizeHint(card->sizeHint());
+            ui->listAdvancementsMulti->addItem(listItem);
+            ui->listAdvancementsMulti->setItemWidget(listItem, card);
+        } else {
+            QListWidgetItem *item = new QListWidgetItem(icon, displayText);
+            ui->listAdvancements->addItem(item);
         }
-        ui->listAdvancements->addItem(item);
     }
 }
 
