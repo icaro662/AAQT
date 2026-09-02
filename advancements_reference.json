@@ -171,7 +171,14 @@
   },
   "minecraft:nether/explore_nether": {
     "name": "Hot Tourist Destinations",
-    "description": "Explore all Nether biomes"
+    "description": "Explore all Nether biomes",
+    "criteria": [
+      "minecraft:nether_wastes",
+      "minecraft:soul_sand_valley",
+      "minecraft:crimson_forest",
+      "minecraft:warped_forest",
+      "minecraft:basalt_deltas"
+    ]
   },
   "minecraft:nether/use_lodestone": {
     "name": "Country Lode, Take Me Home",
@@ -223,7 +230,42 @@
   },
   "minecraft:adventure/kill_a_mob": {
     "name": "Monster Hunter",
-    "description": "Kill any hostile monster"
+    "description": "Kill any hostile monster",
+    "criteria": [
+      "minecraft:blaze",
+      "minecraft:cave_spider",
+      "minecraft:creeper",
+      "minecraft:drowned",
+      "minecraft:elder_guardian",
+      "minecraft:ender_dragon",
+      "minecraft:enderman",
+      "minecraft:endermite",
+      "minecraft:evoker",
+      "minecraft:ghast",
+      "minecraft:guardian",
+      "minecraft:hoglin",
+      "minecraft:husk",
+      "minecraft:magma_cube",
+      "minecraft:phantom",
+      "minecraft:piglin",
+      "minecraft:pillager",
+      "minecraft:ravager",
+      "minecraft:shulker",
+      "minecraft:silverfish",
+      "minecraft:skeleton",
+      "minecraft:slime",
+      "minecraft:spider",
+      "minecraft:stray",
+      "minecraft:vex",
+      "minecraft:vindicator",
+      "minecraft:witch",
+      "minecraft:wither",
+      "minecraft:wither_skeleton",
+      "minecraft:zoglin",
+      "minecraft:zombie",
+      "minecraft:zombie_villager",
+      "minecraft:zombified_piglin"
+    ]
   },
   "minecraft:adventure/trade": {
     "name": "What a Deal!",
