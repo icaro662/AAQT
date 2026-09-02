@@ -15,8 +15,13 @@
 #include <QMainWindow>
 #include <QDebug>
 #include <QPainter>
-#include <QGroupBox>
+#include <QBoxLayout>
 #include <QVBoxLayout>
+#include <QLayoutItem>
+#include <QGroupBox>
+#include <QGridLayout>
+#include <QListView>
+#include <QSizePolicy>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QAbstractItemView>
@@ -29,19 +34,49 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
+    multiCriteriaOrder = {
+        "minecraft:adventure/adventuring_time",
+        "minecraft:adventure/kill_all_mobs",
+        "minecraft:husbandry/balanced_diet",
+        "minecraft:husbandry/bred_all_animals",
+        "minecraft:husbandry/complete_catalogue",
+        "minecraft:nether/explore_nether"
+    };
+
     ui->setupUi(this);
     ui->listAdvancements->setSelectionMode(QAbstractItemView::NoSelection);
     ui->listAdvancementsMulti->setSelectionMode(QAbstractItemView::NoSelection);
+    QLayout *oldLayout = centralWidget()->layout();
+    if (oldLayout) {
+        QLayoutItem *item;
+        while ((item = oldLayout->takeAt(0)) != nullptr) {
+            delete item;
+        }
+        delete oldLayout;
+    }
+    QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget());
+    mainLayout->addWidget(ui->listAdvancements, 2);
+    mainLayout->addWidget(ui->listAdvancementsMulti, 2);
+    mainLayout->addWidget(ui->btnSettings, 0);
+    ui->listAdvancements->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    ui->listAdvancementsMulti->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    ui->listAdvancementsMulti->setViewMode(QListView::IconMode);
+    ui->listAdvancementsMulti->setFlow(QListView::LeftToRight);
+    ui->listAdvancementsMulti->setResizeMode(QListView::Adjust);
+    ui->listAdvancementsMulti->setWrapping(true);
+    ui->listAdvancements->setGridSize(QSize(90, 90));
+    ui->listAdvancements->setUniformItemSizes(true);
     setWindowTitle("AAQT");
     showMaximized();
 
-    loadAdvancementReference("/home/hikaru/Projects/AA-Tool/AA-Tool/advancements_reference.json");
+    loadAdvancementReference("/home/hikaru/Projects/AAQT/AA-Tool/advancements_reference.json");
     refreshFromInstance();
 
     refreshTimer = new QTimer(this);
     connect(refreshTimer, &QTimer::timeout, this, &MainWindow::refreshFromInstance);
     refreshTimer->start(60000);
 }
+
 
 QByteArray MainWindow::decompressGzip(const QString &filePath)
 {
@@ -62,6 +97,7 @@ QByteArray MainWindow::decompressGzip(const QString &filePath)
     gzclose(file);
     return result;
 }
+
 
 QString MainWindow::parseMinecraftVersion(const QByteArray &levelDatBytes)
 {
@@ -117,6 +153,7 @@ QString MainWindow::parseMinecraftVersion(const QByteArray &levelDatBytes)
     return QString(); // "Data" not found at all
 }
 
+
 void MainWindow::refreshFromInstance()
 {
     QSettings settings;
@@ -138,14 +175,55 @@ void MainWindow::refreshFromInstance()
     }
 }
 
+
 QString MainWindow::detectActiveWorldPath(const QString &instancePath)
 {
-    QDir savesDir(instancePath + "/minecraft/saves");
-    if (!savesDir.exists()) {
-        qDebug() << "Saves folder doesn't exist:" << savesDir.path();
+    QDir selectedDir(instancePath);
+    if (!selectedDir.exists()) {
+        qDebug() << "Selected path doesn't exist:" << instancePath;
         return QString();
     }
 
+    // Case 1: the selected folder IS a world folder itself
+    if (QFileInfo(selectedDir.filePath("level.dat")).exists()) {
+        qDebug() << "Path is a world folder directly:" << instancePath;
+        return instancePath;
+    }
+
+    // Case 2: the selected folder directly contains world folders (i.e. it IS "saves")
+    QFileInfoList directChildren = selectedDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QFileInfo &child : directChildren) {
+        if (QFileInfo(child.absoluteFilePath() + "/level.dat").exists()) {
+            qDebug() << "Path is a saves folder directly:" << instancePath;
+            return findMostRecentWorld(instancePath);
+        }
+    }
+
+    // Case 3: try common nested locations for a saves folder
+    QStringList candidates = {
+        instancePath + "/saves",
+        instancePath + "/minecraft/saves",
+        instancePath + "/.minecraft/saves"
+    };
+
+    for (const QString &candidate : candidates) {
+        if (QDir(candidate).exists()) {
+            QString result = findMostRecentWorld(candidate);
+            if (!result.isEmpty()) {
+                qDebug() << "Found saves folder at:" << candidate;
+                return result;
+            }
+        }
+    }
+
+    qDebug() << "Could not resolve a world path from:" << instancePath;
+    return QString();
+}
+
+
+QString MainWindow::findMostRecentWorld(const QString &savesPath)
+{
+    QDir savesDir(savesPath);
     QFileInfoList worldFolders = savesDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
 
     QString mostRecentWorld;
@@ -153,24 +231,18 @@ QString MainWindow::detectActiveWorldPath(const QString &instancePath)
 
     for (const QFileInfo &folder : worldFolders) {
         QFileInfo levelDat(folder.absoluteFilePath() + "/level.dat");
-
-        if (!levelDat.exists()) {
-            qDebug() << "No level.dat in:" << folder.absoluteFilePath();
-            continue;
-        }
+        if (!levelDat.exists()) continue;
 
         QDateTime modified = levelDat.lastModified();
-        qDebug() << folder.fileName() << "last modified:" << modified;
-
         if (mostRecentWorld.isEmpty() || modified > mostRecentTime) {
             mostRecentWorld = folder.absoluteFilePath();
             mostRecentTime = modified;
         }
     }
 
-    qDebug() << "Selected world:" << mostRecentWorld;
     return mostRecentWorld;
 }
+
 
 void MainWindow::loadAdvancementReference(const QString &filePath)
 {
@@ -203,6 +275,7 @@ void MainWindow::loadAdvancementReference(const QString &filePath)
     }
 }
 
+
 QString MainWindow::findAdvancementsFile(const QString &worldPath)
 {
     QDir advancementsDir(worldPath + "/advancements");
@@ -218,6 +291,7 @@ QString MainWindow::findAdvancementsFile(const QString &worldPath)
 
     return advancementsDir.absoluteFilePath(jsonFiles.first());
 }
+
 
 QString MainWindow::formatCriterionName(const QString &rawKey)
 {
@@ -239,51 +313,36 @@ QString MainWindow::formatCriterionName(const QString &rawKey)
     return words.join(" ");
 }
 
+
 void MainWindow::loadAdvancements(const QString &filePath)
 {
     ui->listAdvancements->clear();
     ui->listAdvancementsMulti->clear();
 
     QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        ui->listAdvancements->addItem("Could not open file: " + filePath);
-        return;
+    QJsonObject root;
+
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QByteArray data = file.readAll();
+        file.close();
+
+        QJsonParseError parseError;
+        QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
+
+        if (parseError.error == QJsonParseError::NoError) {
+            root = doc.object();
+        }
     }
 
-    QByteArray data = file.readAll();
-    file.close();
-
-    QJsonParseError parseError;
-    QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
-
-    if (parseError.error != QJsonParseError::NoError) {
-        ui->listAdvancements->addItem("JSON parse error: " + parseError.errorString());
-        return;
-    }
-
-    QJsonObject root = doc.object();
-
-    for (const QString &key : root.keys()) {
-        if (key == "DataVersion") continue;
-        if (key.startsWith("minecraft:recipes/")) continue;
+    for (const QString &key : advancementReference.keys()) {
         if (key.endsWith("/root")) continue;
+        if (multiCriteriaOrder.contains(key)) continue;
+
+        AdvancementInfo info = advancementReference.value(key);
+        QString displayText = info.name;
 
         QJsonObject advancement = root.value(key).toObject();
         bool done = advancement.value("done").toBool();
-        QJsonObject completedCriteria = advancement.value("criteria").toObject();
-
-        QString displayText;
-        bool isMultiCriteria = false;
-        QStringList criteriaList;
-
-        if (advancementReference.contains(key)) {
-            AdvancementInfo info = advancementReference.value(key);
-            displayText = info.name;
-            criteriaList = info.criteria;
-            isMultiCriteria = criteriaList.size() > 1;
-        } else {
-            displayText = key;
-        }
 
         QPixmap pixmap(64, 64);
         pixmap.fill(done ? QColor("#3a7d3a") : QColor("#555555"));
@@ -291,48 +350,74 @@ void MainWindow::loadAdvancements(const QString &filePath)
         painter.setPen(Qt::white);
         painter.drawRect(0, 0, 63, 63);
         painter.end();
-        QIcon icon(pixmap);
 
-        if (isMultiCriteria) {
-            QGroupBox *card = new QGroupBox(displayText);
-            QVBoxLayout *cardLayout = new QVBoxLayout(card);
+        QListWidgetItem *item = new QListWidgetItem(QIcon(pixmap), displayText);
+        ui->listAdvancements->addItem(item);
+    }
 
-            for (const QString &criterion : criteriaList) {
-                bool criterionDone = completedCriteria.contains(criterion);
+    for (const QString &key : multiCriteriaOrder) {
+        if (!advancementReference.contains(key)) continue;
 
-                QPixmap smallPixmap(20, 20);
-                smallPixmap.fill(criterionDone ? QColor("#3a7d3a") : QColor("#555555"));
-                QPainter smallPainter(&smallPixmap);
-                smallPainter.setPen(Qt::white);
-                smallPainter.drawRect(0, 0, 19, 19);
-                smallPainter.end();
+        AdvancementInfo info = advancementReference.value(key);
+        QString displayText = info.name;
+        QStringList criteriaList = info.criteria;
 
-                QWidget *row = new QWidget();
-                QHBoxLayout *rowLayout = new QHBoxLayout(row);
-                rowLayout->setContentsMargins(0, 0, 0, 0);
+        QJsonObject advancement = root.value(key).toObject();
+        QJsonObject completedCriteria = advancement.value("criteria").toObject();
 
-                QLabel *iconLabel = new QLabel();
-                iconLabel->setPixmap(smallPixmap);
+        QGroupBox *card = new QGroupBox(displayText);
+        QGridLayout *cardLayout = new QGridLayout(card);
+        cardLayout->setSpacing(2);
+        cardLayout->setContentsMargins(4, 4, 4, 4);
 
-                QLabel *textLabel = new QLabel(formatCriterionName(criterion));
+        const int maxRows = 16;
+        int rowIndex = 0;
+        int colIndex = 0;
 
-                rowLayout->addWidget(iconLabel);
-                rowLayout->addWidget(textLabel);
-                rowLayout->addStretch();
+        QFont smallFont;
+        smallFont.setPointSize(8);
 
-                cardLayout->addWidget(row);
+        for (const QString &criterion : criteriaList) {
+            bool criterionDone = completedCriteria.contains(criterion);
+
+            QPixmap smallPixmap(12, 12);
+            smallPixmap.fill(criterionDone ? QColor("#3a7d3a") : QColor("#555555"));
+            QPainter smallPainter(&smallPixmap);
+            smallPainter.setPen(Qt::white);
+            smallPainter.drawRect(0, 0, 11, 11);
+            smallPainter.end();
+
+            QWidget *row = new QWidget();
+            QHBoxLayout *rowLayout = new QHBoxLayout(row);
+            rowLayout->setContentsMargins(0, 0, 0, 0);
+            rowLayout->setSpacing(3);
+
+            QLabel *iconLabel = new QLabel();
+            iconLabel->setPixmap(smallPixmap);
+
+            QLabel *textLabel = new QLabel(formatCriterionName(criterion));
+            textLabel->setFont(smallFont);
+
+            rowLayout->addWidget(iconLabel);
+            rowLayout->addWidget(textLabel);
+            rowLayout->addStretch();
+
+            cardLayout->addWidget(row, rowIndex, colIndex);
+
+            rowIndex++;
+            if (rowIndex >= maxRows) {
+                rowIndex = 0;
+                colIndex++;
             }
-
-            QListWidgetItem *listItem = new QListWidgetItem();
-            listItem->setSizeHint(card->sizeHint());
-            ui->listAdvancementsMulti->addItem(listItem);
-            ui->listAdvancementsMulti->setItemWidget(listItem, card);
-        } else {
-            QListWidgetItem *item = new QListWidgetItem(icon, displayText);
-            ui->listAdvancements->addItem(item);
         }
+
+        QListWidgetItem *listItem = new QListWidgetItem();
+        listItem->setSizeHint(card->sizeHint());
+        ui->listAdvancementsMulti->addItem(listItem);
+        ui->listAdvancementsMulti->setItemWidget(listItem, card);
     }
 }
+
 
 void MainWindow::on_btnSettings_clicked()
 {
@@ -341,6 +426,7 @@ void MainWindow::on_btnSettings_clicked()
         refreshFromInstance();
     }
 }
+
 
 MainWindow::~MainWindow()
 {

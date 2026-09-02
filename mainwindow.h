@@ -34,11 +34,14 @@ private:
     QMap<QString, AdvancementInfo> advancementReference;
     QString parseMinecraftVersion(const QByteArray &levelDatBytes);
     QString detectActiveWorldPath(const QString &instancePath);
+    QString findMostRecentWorld(const QString &savesPath);
     QString findAdvancementsFile(const QString &worldPath);
+    QStringList multiCriteriaOrder;
     QString formatCriterionName(const QString &rawKey);
     QByteArray decompressGzip(const QString &filePath);
     QTimer *refreshTimer;
     void loadAdvancementReference(const QString &filePath);
+
     void loadAdvancements(const QString &filePath);
     void refreshFromInstance();
 };
